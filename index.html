@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streakflow — Daily Habit Tracker</title>
+    <meta name="description" content="Track your daily habits, build streaks, and visualize your weekly progress with a beautiful interactive grid.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo">
+                    <svg class="logo-icon" width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                        <path d="M16 2C16 2 8 10 8 18C8 22.4183 11.5817 26 16 26C20.4183 26 24 22.4183 24 18C24 10 16 2 16 2Z" fill="url(#flame-grad)"/>
+                        <path d="M16 12C16 12 12 16 12 20C12 22.2091 13.7909 24 16 24C18.2091 24 20 22.2091 20 20C20 16 16 12 16 12Z" fill="url(#flame-inner)"/>
+                        <defs>
+                            <linearGradient id="flame-grad" x1="16" y1="2" x2="16" y2="26" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#FFD700"/>
+                                <stop offset="1" stop-color="#F97316"/>
+                            </linearGradient>
+                            <linearGradient id="flame-inner" x1="16" y1="12" x2="16" y2="24" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#FEF3C7"/>
+                                <stop offset="1" stop-color="#FBBF24"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <h1>Streakflow</h1>
+                </div>
+                <p class="tagline">Build better habits, one day at a time</p>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Add Habit Form -->
+            <section class="add-habit-section" aria-label="Add a new habit">
+                <form id="add-habit-form" class="add-habit-form">
+                    <div class="input-wrapper">
+                        <svg class="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <input
+                            type="text"
+                            id="habit-input"
+                            class="habit-input"
+                            placeholder="Add a new habit — e.g. Read 30 min, Exercise, Meditate..."
+                            autocomplete="off"
+                            maxlength="50"
+                            aria-label="Enter habit name"
+                        >
+                    </div>
+                    <button type="submit" class="add-btn" id="add-habit-btn" aria-label="Add habit">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Add</span>
+                    </button>
+                </form>
+            </section>
+
+            <!-- Empty State -->
+            <section id="empty-state" class="empty-state">
+                <div class="empty-illustration">
+                    <div class="empty-grid-visual" aria-hidden="true">
+                        <div class="eg-row">
+                            <div class="eg-cell eg-label"></div>
+                            <div class="eg-cell eg-dot"></div>
+                            <div class="eg-cell eg-dot"></div>
+                            <div class="eg-cell eg-dot delay-1"></div>
+                            <div class="eg-cell eg-dot delay-2"></div>
+                            <div class="eg-cell eg-dot"></div>
+                            <div class="eg-cell eg-dot delay-3"></div>
+                            <div class="eg-cell eg-dot"></div>
+                        </div>
+                        <div class="eg-row">
+                            <div class="eg-cell eg-label"></div>
+                            <div class="eg-cell eg-dot delay-2"></div>
+                            <div class="eg-cell eg-dot delay-1"></div>
+                            <div class="eg-cell eg-dot"></div>
+                            <div class="eg-cell eg-dot delay-3"></div>
+                            <div class="eg-cell eg-dot delay-1"></div>
+                            <div class="eg-cell eg-dot"></div>
+                            <div class="eg-cell eg-dot delay-2"></div>
+                        </div>
+                        <div class="eg-row">
+                            <div class="eg-cell eg-label"></div>
+                            <div class="eg-cell eg-dot delay-1"></div>
+                            <div class="eg-cell eg-dot delay-3"></div>
+                            <div class="eg-cell eg-dot delay-2"></div>
+                            <div class="eg-cell eg-dot"></div>
+                            <div class="eg-cell eg-dot delay-2"></div>
+                            <div class="eg-cell eg-dot delay-1"></div>
+                            <div class="eg-cell eg-dot delay-3"></div>
+                        </div>
+                    </div>
+                </div>
+                <h2 class="empty-title">Start tracking your habits</h2>
+                <p class="empty-description">
+                    Add your first habit above and begin building streaks.<br>
+                    Every checked day brings you closer to lasting change.
+                </p>
+            </section>
+
+            <!-- Tracker Section -->
+            <section id="tracker-section" class="tracker-section" hidden>
+                <!-- Week Navigation -->
+                <nav class="week-nav" aria-label="Week navigation">
+                    <div class="week-nav-left">
+                        <button id="prev-week-btn" class="nav-btn" aria-label="Previous week" title="Previous week">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </button>
+                        <h2 id="week-label" class="week-label"></h2>
+                        <button id="next-week-btn" class="nav-btn" aria-label="Next week" title="Next week">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </button>
+                    </div>
+                    <button id="today-btn" class="today-btn" hidden aria-label="Jump to current week">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        <span>Today</span>
+                    </button>
+                </nav>
+
+                <!-- Grid -->
+                <div class="grid-wrapper" role="region" aria-label="Habit tracking grid" tabindex="0">
+                    <div class="tracker-grid" role="grid">
+                        <div class="grid-row grid-header" id="grid-header" role="row">
+                            <!-- Rendered by JS -->
+                        </div>
+                        <div id="habit-rows">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -2px; margin-right: 4px; opacity: 0.5;">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                Your data stays in your browser — nothing leaves this device
+            </p>
+        </footer>
+    </div>
+
+    <!-- Rename Dialog (hidden by default) -->
+    <div id="rename-dialog" class="modal-overlay" hidden>
+        <div class="modal" role="dialog" aria-labelledby="rename-dialog-title" aria-modal="true">
+            <h3 id="rename-dialog-title">Rename Habit</h3>
+            <input type="text" id="rename-input" class="rename-input" maxlength="50" aria-label="New habit name">
+            <div class="modal-actions">
+                <button id="rename-cancel-btn" class="modal-btn modal-btn-cancel">Cancel</button>
+                <button id="rename-save-btn" class="modal-btn modal-btn-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Dialog -->
+    <div id="delete-dialog" class="modal-overlay" hidden>
+        <div class="modal" role="alertdialog" aria-labelledby="delete-dialog-title" aria-describedby="delete-dialog-desc" aria-modal="true">
+            <h3 id="delete-dialog-title">Delete Habit</h3>
+            <p id="delete-dialog-desc">Are you sure you want to delete <strong id="delete-habit-name"></strong>? This will remove all its history and cannot be undone.</p>
+            <div class="modal-actions">
+                <button id="delete-cancel-btn" class="modal-btn modal-btn-cancel">Cancel</button>
+                <button id="delete-confirm-btn" class="modal-btn modal-btn-danger">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
