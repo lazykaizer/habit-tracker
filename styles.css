@@ -73,11 +73,11 @@
 
     /* Grid sizing */
     --cell-size: 48px;
-    --cell-size-mobile: 42px;
+    --cell-size-mobile: 40px;
     --habit-col-width: 200px;
-    --habit-col-width-mobile: 120px;
+    --habit-col-width-mobile: 130px;
     --streak-col-width: 80px;
-    --streak-col-width-mobile: 56px;
+    --streak-col-width-mobile: 52px;
 }
 
 /* ---------- Reset & Base ---------- */
@@ -122,6 +122,11 @@ body::before {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+}
+
+/* ---------- Hidden attribute override ---------- */
+[hidden] {
+    display: none !important;
 }
 
 /* ---------- Focus Styles ---------- */
@@ -785,12 +790,16 @@ body::before {
     inset: 0;
     background: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     z-index: 100;
-    animation: fadeIn var(--duration-fast) ease;
     padding: var(--space-lg);
+}
+
+.modal-overlay.active {
+    display: flex;
+    animation: fadeIn var(--duration-fast) ease;
 }
 
 .modal {
@@ -1064,14 +1073,32 @@ body::before {
         font-size: 0.75rem;
     }
 
-    /* Habit actions always visible on mobile (no hover) */
+    /* On mobile, hide action buttons to save space;
+       they appear when user taps/focuses the row */
     .habit-actions {
+        opacity: 0;
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: var(--bg-surface);
+        border-radius: var(--radius-sm);
+        padding: 2px;
+        box-shadow: var(--shadow-sm);
+    }
+
+    .grid-row:focus-within .habit-actions,
+    .habit-info:active .habit-actions {
         opacity: 1;
     }
 
     .habit-action-btn {
         width: 24px;
         height: 24px;
+    }
+
+    .cell-habit {
+        position: relative;
     }
 }
 

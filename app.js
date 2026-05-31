@@ -458,7 +458,7 @@ function openRenameDialog(habitId) {
 
     renamingHabitId = habitId;
     dom.renameInput.value = habit.name;
-    dom.renameDialog.hidden = false;
+    dom.renameDialog.classList.add('active');
 
     // Focus input and select text
     requestAnimationFrame(() => {
@@ -468,7 +468,7 @@ function openRenameDialog(habitId) {
 }
 
 function closeRenameDialog() {
-    dom.renameDialog.hidden = true;
+    dom.renameDialog.classList.remove('active');
     renamingHabitId = null;
 }
 
@@ -487,7 +487,7 @@ function openDeleteDialog(habitId) {
 
     deletingHabitId = habitId;
     dom.deleteHabitName.textContent = habit.name;
-    dom.deleteDialog.hidden = false;
+    dom.deleteDialog.classList.add('active');
 
     // Focus the cancel button (safer default)
     requestAnimationFrame(() => {
@@ -496,7 +496,7 @@ function openDeleteDialog(habitId) {
 }
 
 function closeDeleteDialog() {
-    dom.deleteDialog.hidden = true;
+    dom.deleteDialog.classList.remove('active');
     deletingHabitId = null;
 }
 
@@ -548,8 +548,8 @@ function bindEvents() {
     document.addEventListener('keydown', (e) => {
         // Escape closes modals
         if (e.key === 'Escape') {
-            if (!dom.renameDialog.hidden) closeRenameDialog();
-            if (!dom.deleteDialog.hidden) closeDeleteDialog();
+            if (dom.renameDialog.classList.contains('active')) closeRenameDialog();
+            if (dom.deleteDialog.classList.contains('active')) closeDeleteDialog();
         }
 
         // Left/Right arrow for week navigation when not focused on input
