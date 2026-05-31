@@ -17,6 +17,8 @@ let state = {
 
 let renamingHabitId = null;
 let deletingHabitId = null;
+let touchTimer = null;
+let activeTooltip = null;
 
 // ---------- DOM References ----------
 const dom = {};
@@ -46,12 +48,10 @@ function cacheDom() {
 
 // ---------- Utility Functions ----------
 
-/** Generate a unique ID */
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 6);
 }
 
-/** Format a Date object as 'YYYY-MM-DD' */
 function formatDate(date) {
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -59,17 +59,15 @@ function formatDate(date) {
     return `${y}-${m}-${d}`;
 }
 
-/** Get Monday of the week containing the given date (ISO weeks start on Monday) */
 function getMondayOfWeek(date) {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
-    const day = d.getDay(); // 0=Sun, 1=Mon, ...
-    const diff = day === 0 ? -6 : 1 - day; // if Sunday, go back 6 days
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
     d.setDate(d.getDate() + diff);
     return d;
 }
 
-/** Get array of 7 Date objects for Mon–Sun of the given week */
 function getWeekDates(mondayDate) {
     const dates = [];
     for (let i = 0; i < 7; i++) {
@@ -80,7 +78,6 @@ function getWeekDates(mondayDate) {
     return dates;
 }
 
-/** Check if a date is today */
 function isToday(date) {
     const today = new Date();
     return date.getFullYear() === today.getFullYear()
@@ -88,26 +85,22 @@ function isToday(date) {
         && date.getDate() === today.getDate();
 }
 
-/** Check if a date is in the future (strictly after today) */
 function isFuture(date) {
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     return date > today;
 }
 
-/** Check if two dates are the same calendar day */
 function isSameDay(a, b) {
     return a.getFullYear() === b.getFullYear()
         && a.getMonth() === b.getMonth()
         && a.getDate() === b.getDate();
 }
 
-/** Format the week label, e.g., "May 26 – Jun 1, 2025" */
 function formatWeekLabel(mondayDate) {
     const dates = getWeekDates(mondayDate);
     const mon = dates[0];
     const sun = dates[6];
-
     const startMonth = MONTH_NAMES[mon.getMonth()];
     const endMonth = MONTH_NAMES[sun.getMonth()];
     const startDay = mon.getDate();
@@ -120,22 +113,19 @@ function formatWeekLabel(mondayDate) {
     return `${startMonth} ${startDay} – ${endMonth} ${endDay}, ${year}`;
 }
 
-/** Check if the viewed week is the current week */
 function isCurrentWeek() {
     const currentMonday = getMondayOfWeek(new Date());
     return isSameDay(state.currentWeekStart, currentMonday);
 }
 
+// IMPROVED: 8
+function isPastWeek() {
+    const currentMonday = getMondayOfWeek(new Date());
+    return state.currentWeekStart < currentMonday;
+}
+
 // ---------- Streak Calculation ----------
 
-/**
- * Calculate the current consecutive-day streak for a habit.
- *
- * Logic: Count backwards from today. If today is checked, include it.
- * If today is NOT checked, start counting from yesterday. This way,
- * the user doesn't lose their streak just because they haven't yet
- * done their habit today (e.g., it's still morning).
- */
 function calculateStreak(habitId) {
     const completions = state.completions[habitId] || {};
     const today = new Date();
@@ -143,7 +133,6 @@ function calculateStreak(habitId) {
 
     let checkDate = new Date(today);
 
-    // If today is not completed, start from yesterday
     if (!completions[formatDate(checkDate)]) {
         checkDate.setDate(checkDate.getDate() - 1);
     }
@@ -157,12 +146,13 @@ function calculateStreak(habitId) {
     return streak;
 }
 
-/** Get the streak level class based on count */
+// IMPROVED: 3
 function getStreakLevel(count) {
     if (count === 0) return 'streak-0';
-    if (count <= 2) return 'streak-low';
-    if (count <= 6) return 'streak-mid';
-    return 'streak-high';
+    if (count <= 2) return 'streak-1-2';
+    if (count <= 6) return 'streak-3-6';
+    if (count <= 13) return 'streak-7-13';
+    return 'streak-14-plus';
 }
 
 // ---------- State Persistence ----------
@@ -176,20 +166,19 @@ function loadState() {
             state.completions = data.completions || {};
         }
     } catch (e) {
-        console.warn('Failed to load state from localStorage:', e);
+        console.warn('Failed to load state:', e);
     }
     state.currentWeekStart = getMondayOfWeek(new Date());
 }
 
 function saveState() {
     try {
-        const data = {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
             habits: state.habits,
             completions: state.completions
-        };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }));
     } catch (e) {
-        console.warn('Failed to save state to localStorage:', e);
+        console.warn('Failed to save state:', e);
     }
 }
 
@@ -210,7 +199,6 @@ function addHabit(name) {
     saveState();
     render();
 
-    // Focus back on input for quick entry of multiple habits
     dom.habitInput.value = '';
     dom.habitInput.focus();
 }
@@ -244,7 +232,6 @@ function toggleCompletion(habitId, dateStr) {
     } else {
         state.completions[habitId][dateStr] = true;
     }
-
     saveState();
 }
 
@@ -254,14 +241,14 @@ function goToPreviousWeek() {
     const newStart = new Date(state.currentWeekStart);
     newStart.setDate(newStart.getDate() - 7);
     state.currentWeekStart = newStart;
-    render('right'); // slide from left = content coming from the right
+    render('right');
 }
 
 function goToNextWeek() {
     const newStart = new Date(state.currentWeekStart);
     newStart.setDate(newStart.getDate() + 7);
     state.currentWeekStart = newStart;
-    render('left'); // slide from right
+    render('left');
 }
 
 function goToCurrentWeek() {
@@ -273,47 +260,51 @@ function goToCurrentWeek() {
 
 function render(slideDirection) {
     const hasHabits = state.habits.length > 0;
-
-    // Toggle sections
     dom.emptyState.hidden = hasHabits;
     dom.trackerSection.hidden = !hasHabits;
 
     if (!hasHabits) return;
 
-    // Update week label
-    dom.weekLabel.textContent = formatWeekLabel(state.currentWeekStart);
+    // IMPROVED: 8
+    let weekText = formatWeekLabel(state.currentWeekStart);
+    if (isPastWeek()) {
+        weekText += ` <span class="past-week-badge">Past week</span>`;
+    }
+    dom.weekLabel.innerHTML = weekText;
 
-    // Show/hide today button
     dom.todayBtn.hidden = isCurrentWeek();
 
     const weekDates = getWeekDates(state.currentWeekStart);
-
-    // Render grid header
     renderGridHeader(weekDates);
-
-    // Render habit rows
     renderHabitRows(weekDates, slideDirection);
 }
 
+// IMPROVED: 5 & 6
 function renderGridHeader(weekDates) {
     let html = `<div class="cell cell-habit" role="columnheader">Habit</div>`;
 
     weekDates.forEach((date, i) => {
         const todayClass = isToday(date) ? ' is-today' : '';
+        const todayLabel = isToday(date)
+            ? `<span class="today-label">TODAY</span>`
+            : `<span class="today-label" style="visibility: hidden; opacity: 0;" aria-hidden="true">TODAY</span>`;
+
         html += `
             <div class="cell cell-day${todayClass}" role="columnheader">
                 <div class="day-header-content">
-                    <span class="day-name">${DAY_NAMES_SHORT[i]}</span>
+                    ${todayLabel}
+                    <span class="day-name day-name-desktop">${DAY_NAMES_SHORT[i]}</span>
+                    <span class="day-name day-name-mobile">${DAY_NAMES_SHORT[i][0]}</span>
                     <span class="day-date">${date.getDate()}</span>
                 </div>
             </div>`;
     });
 
     html += `<div class="cell cell-streak" role="columnheader">Streak</div>`;
-
     dom.gridHeader.innerHTML = html;
 }
 
+// IMPROVED: 3, 4, 6, 8
 function renderHabitRows(weekDates, slideDirection) {
     let html = '';
 
@@ -324,11 +315,16 @@ function renderHabitRows(weekDates, slideDirection) {
 
         html += `<div class="grid-row${enterClass}" role="row" data-habit-id="${habit.id}" style="animation-delay: ${index * 40}ms">`;
 
-        // Habit name cell
+        // Habit name cell with long press events
         html += `
             <div class="cell cell-habit" role="rowheader">
                 <div class="habit-info">
-                    <span class="habit-name" title="${escapeHtml(habit.name)}">${escapeHtml(habit.name)}</span>
+                    <span class="habit-name" title="${escapeHtml(habit.name)}"
+                        ontouchstart="handleHabitTouchStart(event, '${escapeHtml(habit.name)}')"
+                        ontouchend="handleHabitTouchEnd()"
+                        ontouchmove="handleHabitTouchEnd()">
+                        ${escapeHtml(habit.name)}
+                    </span>
                     <div class="habit-actions">
                         <button class="habit-action-btn edit-btn" onclick="openRenameDialog('${habit.id}')"
                             aria-label="Rename ${escapeHtml(habit.name)}" title="Rename">
@@ -356,7 +352,6 @@ function renderHabitRows(weekDates, slideDirection) {
             const futureDay = isFuture(date);
             const checkedClass = isChecked ? ' checked' : '';
             const futureClass = futureDay ? ' future' : '';
-
             const ariaLabel = `${habit.name}, ${DAY_NAMES_FULL[dayIndex]} ${MONTH_NAMES[date.getMonth()]} ${date.getDate()}: ${isChecked ? 'completed' : futureDay ? 'future date' : 'not completed'}`;
 
             html += `
@@ -373,30 +368,47 @@ function renderHabitRows(weekDates, slideDirection) {
                 </div>`;
         });
 
-        // Streak cell
+        // Streak cell with tooltip and past week support
+        const showStreakVal = isPastWeek() ? '—' : streak;
+        const streakCellClass = isPastWeek() ? 'streak-0' : streakLevel;
+        const tooltipText = isPastWeek() ? 'Historical week' : `${streak} day streak — keep it going!`;
+
         html += `
-            <div class="cell cell-streak">
-                <span class="streak-display ${streakLevel}">
+            <div class="cell cell-streak" title="${tooltipText}">
+                <span class="streak-display ${streakCellClass}">
                     <span class="streak-flame" aria-hidden="true">🔥</span>
-                    <span>${streak}</span>
+                    <span class="streak-num">${showStreakVal}</span>
                 </span>
             </div>`;
+
+        // Weekly completion summary progress bar
+        const weeklyCompletions = weekDates.filter(d => state.completions[habit.id]?.[formatDate(d)] === true).length;
+        if (weeklyCompletions > 0) {
+            let barClass = 'bar-amber';
+            if (weeklyCompletions >= 4 && weeklyCompletions <= 6) {
+                barClass = 'bar-green';
+            } else if (weeklyCompletions === 7) {
+                barClass = 'bar-full-shimmer';
+            }
+            const percent = Math.round((weeklyCompletions / 7) * 100);
+            html += `
+                <div class="weekly-progress-bar-container" title="${weeklyCompletions}/7 days completed this week">
+                    <div class="weekly-progress-bar ${barClass}" style="width: ${percent}%"></div>
+                </div>`;
+        }
 
         html += `</div>`;
     });
 
-    // Apply slide animation
     if (slideDirection) {
-        dom.habitRows.classList.remove('grid-slide-left', 'grid-slide-right');
-        // Force reflow
+        dom.habitRows.className = '';
         void dom.habitRows.offsetWidth;
-        dom.habitRows.classList.add(slideDirection === 'left' ? 'grid-slide-left' : 'grid-slide-right');
+        dom.habitRows.className = slideDirection === 'left' ? 'grid-slide-left' : 'grid-slide-right';
     }
 
     dom.habitRows.innerHTML = html;
 }
 
-/** Escape HTML entities to prevent XSS */
 function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
@@ -405,29 +417,60 @@ function escapeHtml(str) {
 
 // ---------- Check Handling with Animation ----------
 
+// IMPROVED: 2
 function handleCheck(habitId, dateStr, button) {
     const wasChecked = button.classList.contains('checked');
-
-    // Toggle completion state
     toggleCompletion(habitId, dateStr);
 
     if (wasChecked) {
-        // Unchecking: simple transition
         button.classList.remove('checked');
         button.setAttribute('aria-pressed', 'false');
     } else {
-        // Checking: satisfying animation
         button.classList.add('checked', 'checking');
         button.setAttribute('aria-pressed', 'true');
-
-        // Remove ripple effect after animation
         setTimeout(() => {
             button.classList.remove('checking');
-        }, 600);
+        }, 300); // Ripple finishes in 300ms
     }
 
-    // Update the streak display for this habit row
     updateStreakDisplay(habitId);
+    renderProgressBar(habitId);
+}
+
+// IMPROVED: 4
+function renderProgressBar(habitId) {
+    const row = document.querySelector(`[data-habit-id="${habitId}"]`);
+    if (!row) return;
+
+    const weekDates = getWeekDates(state.currentWeekStart);
+    const weeklyCompletions = weekDates.filter(d => state.completions[habitId]?.[formatDate(d)] === true).length;
+
+    let barContainer = row.querySelector('.weekly-progress-bar-container');
+    
+    if (weeklyCompletions === 0) {
+        if (barContainer) barContainer.remove();
+        return;
+    }
+
+    let barClass = 'bar-amber';
+    if (weeklyCompletions >= 4 && weeklyCompletions <= 6) {
+        barClass = 'bar-green';
+    } else if (weeklyCompletions === 7) {
+        barClass = 'bar-full-shimmer';
+    }
+    const percent = Math.round((weeklyCompletions / 7) * 100);
+
+    if (!barContainer) {
+        barContainer = document.createElement('div');
+        barContainer.className = 'weekly-progress-bar-container';
+        barContainer.innerHTML = '<div class="weekly-progress-bar"></div>';
+        row.appendChild(barContainer);
+    }
+    
+    barContainer.title = `${weeklyCompletions}/7 days completed this week`;
+    const bar = barContainer.querySelector('.weekly-progress-bar');
+    bar.className = `weekly-progress-bar ${barClass}`;
+    bar.style.width = `${percent}%`;
 }
 
 function updateStreakDisplay(habitId) {
@@ -438,19 +481,67 @@ function updateStreakDisplay(habitId) {
     const level = getStreakLevel(streak);
     const streakEl = row.querySelector('.streak-display');
 
-    if (streakEl) {
+    if (streakEl && !isPastWeek()) {
         streakEl.className = `streak-display ${level}`;
-        streakEl.querySelector('span:last-child').textContent = streak;
+        const numEl = streakEl.querySelector('.streak-num');
+        if (numEl) numEl.textContent = streak;
 
-        // Brief scale pulse animation
-        streakEl.style.transform = 'scale(1.2)';
+        // Snappy pulse feedback
+        streakEl.style.transform = 'scale(1.15)';
         setTimeout(() => {
             streakEl.style.transform = 'scale(1)';
-        }, 200);
+        }, 150);
     }
 }
 
-// ---------- Modal: Rename ----------
+// ---------- Mobile Touch Long Press Tooltip ----------
+
+// IMPROVED: 6
+function handleHabitTouchStart(e, name) {
+    if (touchTimer) clearTimeout(touchTimer);
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+
+    touchTimer = setTimeout(() => {
+        showMobileTooltip(clientX, clientY, name);
+    }, 500);
+}
+
+function handleHabitTouchEnd() {
+    if (touchTimer) {
+        clearTimeout(touchTimer);
+        touchTimer = null;
+    }
+    hideMobileTooltip();
+}
+
+function showMobileTooltip(x, y, text) {
+    hideMobileTooltip();
+    const tooltip = document.createElement('div');
+    tooltip.className = 'mobile-tooltip';
+    tooltip.textContent = text;
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y - 45}px`;
+    document.body.appendChild(tooltip);
+    activeTooltip = tooltip;
+
+    const rect = tooltip.getBoundingClientRect();
+    if (rect.left < 10) {
+        tooltip.style.left = '10px';
+    } else if (rect.right > window.innerWidth - 10) {
+        tooltip.style.left = `${window.innerWidth - rect.width - 10}px`;
+    }
+}
+
+function hideMobileTooltip() {
+    if (activeTooltip) {
+        activeTooltip.remove();
+        activeTooltip = null;
+    }
+}
+
+// ---------- Modal Helpers ----------
 
 function openRenameDialog(habitId) {
     const habit = state.habits.find(h => h.id === habitId);
@@ -460,7 +551,6 @@ function openRenameDialog(habitId) {
     dom.renameInput.value = habit.name;
     dom.renameDialog.classList.add('active');
 
-    // Focus input and select text
     requestAnimationFrame(() => {
         dom.renameInput.focus();
         dom.renameInput.select();
@@ -479,8 +569,6 @@ function confirmRename() {
     closeRenameDialog();
 }
 
-// ---------- Modal: Delete ----------
-
 function openDeleteDialog(habitId) {
     const habit = state.habits.find(h => h.id === habitId);
     if (!habit) return;
@@ -489,7 +577,6 @@ function openDeleteDialog(habitId) {
     dom.deleteHabitName.textContent = habit.name;
     dom.deleteDialog.classList.add('active');
 
-    // Focus the cancel button (safer default)
     requestAnimationFrame(() => {
         dom.deleteCancelBtn.focus();
     });
@@ -510,62 +597,41 @@ function confirmDelete() {
 // ---------- Event Binding ----------
 
 function bindEvents() {
-    // Add habit form
     dom.addForm.addEventListener('submit', (e) => {
         e.preventDefault();
         addHabit(dom.habitInput.value);
     });
 
-    // Week navigation
     dom.prevWeekBtn.addEventListener('click', goToPreviousWeek);
     dom.nextWeekBtn.addEventListener('click', goToNextWeek);
     dom.todayBtn.addEventListener('click', goToCurrentWeek);
 
-    // Rename dialog
     dom.renameCancelBtn.addEventListener('click', closeRenameDialog);
     dom.renameSaveBtn.addEventListener('click', confirmRename);
     dom.renameInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            confirmRename();
-        }
-        if (e.key === 'Escape') {
-            closeRenameDialog();
-        }
+        if (e.key === 'Enter') { e.preventDefault(); confirmRename(); }
+        if (e.key === 'Escape') closeRenameDialog();
     });
     dom.renameDialog.addEventListener('click', (e) => {
         if (e.target === dom.renameDialog) closeRenameDialog();
     });
 
-    // Delete dialog
     dom.deleteCancelBtn.addEventListener('click', closeDeleteDialog);
     dom.deleteConfirmBtn.addEventListener('click', confirmDelete);
     dom.deleteDialog.addEventListener('click', (e) => {
         if (e.target === dom.deleteDialog) closeDeleteDialog();
     });
 
-    // Global keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-        // Escape closes modals
         if (e.key === 'Escape') {
             if (dom.renameDialog.classList.contains('active')) closeRenameDialog();
             if (dom.deleteDialog.classList.contains('active')) closeDeleteDialog();
         }
 
-        // Left/Right arrow for week navigation when not focused on input
         if (document.activeElement.tagName !== 'INPUT') {
-            if (e.key === 'ArrowLeft' && e.altKey) {
-                e.preventDefault();
-                goToPreviousWeek();
-            }
-            if (e.key === 'ArrowRight' && e.altKey) {
-                e.preventDefault();
-                goToNextWeek();
-            }
-            if (e.key === 't' && e.altKey) {
-                e.preventDefault();
-                goToCurrentWeek();
-            }
+            if (e.key === 'ArrowLeft' && e.altKey) { e.preventDefault(); goToPreviousWeek(); }
+            if (e.key === 'ArrowRight' && e.altKey) { e.preventDefault(); goToNextWeek(); }
+            if (e.key === 't' && e.altKey) { e.preventDefault(); goToCurrentWeek(); }
         }
     });
 }
@@ -579,7 +645,6 @@ function init() {
     render();
 }
 
-// Start the app when DOM is ready
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {
