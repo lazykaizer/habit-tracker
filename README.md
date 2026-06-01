@@ -1,3 +1,6 @@
+## Live Demo
+https://habit-tracker-nu-flax.vercel.app
+
 # Streakflow — Daily Habit Tracker
 
 A single-page habit tracker that lets you define daily habits, tick them off on a weekly grid, and watch your streaks build over time.
